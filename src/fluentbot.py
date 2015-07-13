@@ -74,7 +74,9 @@ class FluentBot(object):
             pickle.dump(self.patterns, open('patterns.obj', 'w'))
 
     def _dispatch_command_cond(self, chat, commander, text):
-        if text[0] == u'кто-то':
+        if text[0] == u'*':
+            username = u'*'
+        elif text[0] == u'кто-то':
             username = u'*'
         elif text[0] == u'%username':
             username = u'*'
