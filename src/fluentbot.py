@@ -90,7 +90,7 @@ class FluentBot(object):
         try:
             pattern = text.split(u"'")[1]
             reproduce = text.split(u"'")[3]
-            self.patterns.append((re.compile(pattern, flags=re.IGNORECASE), reproduce))
+            self.patterns.append((re.compile(pattern, flags=re.I + re.U), reproduce))
         except Exception:
             self._sendMessage(chat, u"%s, train me better!" % commander)
 
