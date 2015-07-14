@@ -15,6 +15,7 @@ class FluentBot(object):
 
     def __init__(self):
         AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient")
+        self.context = ('', '')
         self.offset = None
         self.client = AsyncHTTPClient()
         self.token = open("token.txt", "r").read().strip()
@@ -22,7 +23,7 @@ class FluentBot(object):
         try:
             self.patterns = pickle.load(open("patterns.obj", "r"))
         except Exception:
-            self.patterns = {}
+            self.patterns = []
 
     def start(self):
         self._getUpdates(self._handle_update)
@@ -47,56 +48,51 @@ class FluentBot(object):
         text = message[u'message'][u'text']
         chat = message[u'message'][u'chat'][u'id']
         username = message[u'message'][u'from'][u'first_name']
-        if text[0] == u'/':
-            self._dispatch_command(chat, username, text[1:])
-        else:
+        command_prefix = [
+                u'/',
+                u'@FluentBot, ',
+                u'@FluentBot ',
+                u'@Fluentbot, ',
+                u'@Fluentbot ',
+                u'@Fluffy, ',
+                u'@Fluffy ']
+        is_command = False
+        for i in command_prefix:
+            if text.startswith(i):
+                self._dispatch_command(chat, username, text[len(i):])
+                is_command = True
+        if not is_command:
             self._dispatch_text(chat, username, text)
 
     def _dispatch_text(self, chat, username, text):
-        patterns = []
-        if self.patterns.has_key(chat):
-            if self.patterns[chat].has_key(username):
-                patterns += self.patterns[chat][username]
-            if self.patterns[chat].has_key(u'*'):
-                patterns += self.patterns[chat][u'*']
         matched = []
-        for i in patterns:
+        for i in self.patterns:
             if i[0].match(text):
-                matched.append(i[1])
+                matched.append(i)
         if matched:
-            self._sendMessage(chat, random.choice(matched).replace("%username", username))
+            reply = random.choice(matched)
+            self.context = reply
+            self._sendMessage(chat, random.choice(matched)[1].replace("%u", username))
 
     def _dispatch_command(self, chat, username, text):
         command = text.split(u' ')[0]
-        if command == u'если' or command == 'if':
-            self._dispatch_command_cond(chat, username, text.split(u' ')[1:])
-        if command == u'запомни' or command == 'save':
+        if command in (u'если', u'if'):
+            self._dispatch_command_cond(username, text)
+        if command in (u'забудь', u'forget'):
+            try:
+                self.patterns.remove(self.context)
+            except ValueError:
+                pass
+        if command in (u'запомни', u'save'):
             pickle.dump(self.patterns, open('patterns.obj', 'w'))
 
-    def _dispatch_command_cond(self, chat, commander, text):
-        if text[0] == u'*':
-            username = u'*'
-        elif text[0] == u'кто-то':
-            username = u'*'
-        elif text[0] == u'%username':
-            username = u'*'
-        elif text[0] == u'кто-нибудь':
-            username = u'*'
-        elif text[0] == u'я':
-            username = commander
-        else:
-            username = text[0]
-
+    def _dispatch_command_cond(self, commander, text):
         try:
-            pattern = " ".join(text).split(u"'")[1]
-            reproduce = " ".join(text).split(u"'")[3]
-            if not self.patterns.has_key(chat):
-                self.patterns[chat] = {}
-            if not self.patterns[chat].has_key(username):
-                self.patterns[chat][username] = []
-            self.patterns[chat][username].append((re.compile(pattern), reproduce))
+            pattern = text.split(u"'")[1]
+            reproduce = text.split(u"'")[3]
+            self.patterns.append((re.compile(pattern, flags=re.IGNORECASE), reproduce))
         except Exception:
-            self._sendMessage(chat, u"%s, ты меня учить будешь пытаться? Делай это правильно!" % commander)
+            self._sendMessage(chat, u"%s, train me better!" % commander)
 
     def _basicResponseCallback(self, response, callback):
         result = {u'ok': False}
@@ -108,7 +104,6 @@ class FluentBot(object):
             except Exception:
                 pass
         callback(result)
-
 
     def _getMe(self, callback):
         self.client.fetch(self.base_url + "/getMe", callback)
