@@ -18,10 +18,6 @@ from PIL import Image
 from cStringIO import StringIO
 
 
-def prnt(obj):
-    print obj
-
-
 class FluentBot(object):
 
     def __init__(self):
@@ -114,7 +110,7 @@ class FluentBot(object):
     def _dispatch_command(self, chat, username, text):
         command = text.split(u' ')[0]
         if command in (u'если', u'if'):
-            self._dispatch_command_cond(username, text)
+            self._dispatch_command_cond(username, chat, text)
         if command in (u'забудь', u'forget'):
             try:
                 self.patterns.remove(self.context)
@@ -123,7 +119,7 @@ class FluentBot(object):
         if command in (u'запомни', u'save'):
             pickle.dump(self.patterns, open('patterns.obj', 'w'))
 
-    def _dispatch_command_cond(self, commander, text):
+    def _dispatch_command_cond(self, commander, chat, text):
         try:
             pattern = text.split(u"'")[1]
             reproduce = text.split(u"'")[3]
@@ -164,7 +160,7 @@ class FluentBot(object):
             method = 'POST',
             headers = {'content-length': str(len(body)), 'content-type': content_type},
             body = body,
-            callback = prnt)
+            callback = lambda x: x)
 
     def _sendMessage(self, chat_id, message, **args):
         self.client.fetch(self.base_url + "/sendMessage",
