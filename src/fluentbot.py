@@ -79,7 +79,6 @@ class FluentBot(object):
 
     def handle_location(self, message):
         if message[u'message'].has_key(u'location'):
-            print 'location!%s' % message
             fp = webdriver.FirefoxProfile(sys.argv[1])
             browser = webdriver.Firefox(firefox_profile=fp)
             browser.get(self.ingress_pattern % message[u'message'][u'location'])
