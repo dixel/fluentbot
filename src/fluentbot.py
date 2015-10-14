@@ -31,9 +31,9 @@ class FluentBot(object):
             self.patterns = pickle.load(open("patterns.obj", "r"))
         except Exception:
             self.patterns = []
-        self.display = Display(visible=0, size=(150, 100))
+        self.display = Display(visible=0, size=(1024, 768))
         self.display.start()
-        self.ingress_pattern = "https://www.ingress.com/intel?ll=%(latitude)s,%(longitude)s&z=14"
+        self.osm_pattern = "http://www.openstreetmap.ru/frame.php#zoom=17&lat=%(latitude)s&lon=%(longitude)s&layer=M"
 
 
     def start(self):
@@ -79,22 +79,16 @@ class FluentBot(object):
 
     def handle_location(self, message):
         if message[u'message'].has_key(u'location'):
-            fp = webdriver.FirefoxProfile(sys.argv[1])
-            browser = webdriver.Firefox(firefox_profile=fp)
-            browser.get(self.ingress_pattern % message[u'message'][u'location'])
+            browser = webdriver.Firefox()
+            browser.maximize_window()
+            browser.get(self.osm_pattern % message[u'message'][u'location'])
             ioloop.IOLoop.instance().add_timeout(time.time() + 10,
                 lambda: self._sendScreenshot(browser, message))
 
     def _sendScreenshot(self, browser, message):
         imgdata = browser.get_screenshot_as_png()
         browser.quit()
-        im = Image.open(StringIO(imgdata))
-        im = im.crop((0, 130, im.size[0], im.size[1] - 130))
-        photo = StringIO()
-        im.save(photo, 'PNG')
-        data = photo.getvalue()
-        photo.close()
-        self._sendPhoto(message[u'message'][u'chat'][u'id'], data)
+        self._sendPhoto(message[u'message'][u'chat'][u'id'], imgdata)
 
     def _dispatch_text(self, chat, username, text):
         matched = []
