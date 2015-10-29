@@ -26,6 +26,8 @@ class FluentBot(object):
         self.offset = None
         self.client = AsyncHTTPClient()
         self.token = open("token.txt", "r").read().strip()
+        self.zoom = 17
+        self.mapper = False
         self.base_url = "https://api.telegram.org/bot" + self.token
         try:
             self.patterns = pickle.load(open("patterns.obj", "r"))
@@ -33,8 +35,7 @@ class FluentBot(object):
             self.patterns = []
         self.display = Display(visible=0, size=(1024, 768))
         self.display.start()
-        self.osm_pattern = "http://www.openstreetmap.ru/frame.php#zoom=17&lat=%(latitude)s&lon=%(longitude)s&layer=M"
-
+        self.osm_pattern = "http://www.openstreetmap.ru/frame.php#zoom=%(zoom)s&lat=%(latitude)s&lon=%(longitude)s&layer=M"
 
     def start(self):
         self._getUpdates(self._handle_update)
@@ -56,17 +57,17 @@ class FluentBot(object):
             return
         self.offset = message[u'update_id']
         if not message[u'message'].has_key(u'text'):
-            self.handle_location(message)
+            if self.mapper:
+                self.mapper = False
+                self.handle_location(message)
             return
         text = message[u'message'][u'text']
         chat = message[u'message'][u'chat'][u'id']
         username = message[u'message'][u'from'][u'first_name']
         command_prefix = [
                 u'/',
-                u'@FluentBot, ',
-                u'@FluentBot ',
-                u'@Fluentbot, ',
-                u'@Fluentbot ',
+                u'@FluffyBbot, ',
+                u'@FluffyBbot ',
                 u'@Fluffy, ',
                 u'@Fluffy ']
         is_command = False
@@ -81,7 +82,9 @@ class FluentBot(object):
         if message[u'message'].has_key(u'location'):
             browser = webdriver.Firefox()
             browser.maximize_window()
-            browser.get(self.osm_pattern % message[u'message'][u'location'])
+            location = message[u'message'][u'location']
+            location.update(zoom = self.zoom)
+            browser.get(self.osm_pattern % location)
             ioloop.IOLoop.instance().add_timeout(time.time() + 10,
                 lambda: self._sendScreenshot(browser, message))
 
@@ -111,6 +114,12 @@ class FluentBot(object):
                 pass
         if command in (u'запомни', u'save'):
             pickle.dump(self.patterns, open('patterns.obj', 'w'))
+        if command in (u'map'):
+            try:
+                self.zoom = int(text.split(u' ')[1])
+                self.mapper = True
+            except Exception:
+                self._sendMessage(chat, u"%s, bad zoom level")
 
     def _dispatch_command_cond(self, commander, chat, text):
         try:
